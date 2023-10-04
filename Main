@@ -1,0 +1,119 @@
+-- Snowball Auto Parry [@dtbsnt]
+
+if getgenv().executed then return end
+
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local Balls = game:GetService("Workspace").Balls
+
+local ballRangeDisplay = nil
+local ballRange = 0
+
+local canParry = true
+
+function FindBall()
+    local RealBall
+
+    for i, v in pairs(Balls:GetChildren()) do
+        if v:GetAttribute("realBall") == true then
+            RealBall = v
+        end
+    end
+    return RealBall
+end
+
+local function setup(Character)
+	Character:WaitForChild("HumanoidRootPart")
+	if ballRangeDisplay then ballRangeDisplay:Destroy() end
+	ballRangeDisplay = Instance.new("Part")
+	
+	ballRangeDisplay.Material = Enum.Material.ForceField
+	ballRangeDisplay.Transparency = 0.75
+	ballRangeDisplay.CanCollide = false
+	ballRangeDisplay.Size = Vector3.new(5,5,5)
+	ballRangeDisplay.Color = Color3.fromRGB(255,255,255)
+	ballRangeDisplay.Shape = Enum.PartType.Ball
+	
+	ballRangeDisplay.Parent = game:GetService("Workspace")
+	
+	local ballIncomingSound = Instance.new("Sound")
+	ballIncomingSound.SoundId = "rbxassetid://9113880610"
+	ballIncomingSound.Parent = Character.HumanoidRootPart
+	ballIncomingSound.Volume = 1
+	
+	ballIncomingSound:Play()
+	
+	Character.ChildRemoved:Connect(function(obj)
+		if obj.Name == "Highlight" then
+			canParry = true
+		end
+	end)
+	RunService.RenderStepped:Connect(function()
+		if Character:FindFirstChild("HumanoidRootPart") then
+			local Ball = FindBall()
+			if Ball then
+				if not Ball:FindFirstChild("PredictionValue") then
+					tag = Instance.new("BillboardGui")
+					tag.Parent = Ball
+					tag.Size = UDim2.new(15,0,3,0)
+					tag.ExtentsOffset = Vector3.new(0,3,0)
+					label = Instance.new("TextLabel")
+					label.Parent = tag
+					label.Size = UDim2.new(1,0,1,0)
+					label.BackgroundTransparency = 1
+					label.TextScaled = true
+					label.TextStrokeTransparency = 0
+					label.TextColor3 = Color3.fromRGB(255, 255, 255)
+					label.Text = "0"
+					tag.Name = "PredictionValue"
+				end
+				
+				local TCL = (#game:GetService("Workspace"):GetDescendants() / 1000) / 2.5
+			
+				local totalVelocity = math.abs(Ball.Velocity.X + Ball.Velocity.Y + Ball.Velocity.Z) / 4.5
+				ballRangeDisplay.Size = Vector3.new(totalVelocity, totalVelocity, totalVelocity)
+				
+				ballRangeDisplay.CFrame = Character:FindFirstChild("HumanoidRootPart").CFrame
+				
+				if Character:FindFirstChild("Highlight") then
+					local PlayerPosition = LocalPlayer.Character.Head.Position
+       				local Distance = (Ball.Position - PlayerPosition).Magnitude
+       				
+       				local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+       				local IRL = (settings().Network.IncomingReplicationLag) + 0.075
+       				
+       				local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
+       				Prediction = ((Prediction * 1.325) + (TCL / 1.5)) / 1.125
+       				
+       				Ball.PredictionValue.TextLabel.Text = "%"..tostring(Prediction)
+       				
+       				if Distance <= Prediction * 2 then if Distance <= Prediction * 1.5 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
+       				
+       				if Distance <= Prediction then
+       					if canParry then
+       						Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
+       					
+       						ReplicatedStorage.Remotes.ParryButtonPress:Fire()
+       						canParry = false
+       					else
+       						if Distance <= 15 then
+       							ReplicatedStorage.Remotes.ParryButtonPress:Fire()
+       						end
+       					end
+       				end
+       			else
+       				Ball.PredictionValue.TextLabel.Text = "%"..tostring(totalVelocity)
+				end
+			end
+		end
+	end)
+end
+LocalPlayer.CharacterAdded:Connect(function(Character)
+	setup(Character)
+end)
+setup(LocalPlayer.Character)
+
+getgenv().executed = true
