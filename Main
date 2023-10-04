@@ -12,7 +12,10 @@ local Balls = game:GetService("Workspace").Balls
 local ballRangeDisplay = nil
 local ballRange = 0
 
+local closeClashes = 0
+
 local canParry = true
+local wasAttempted = false
 
 function FindBall()
     local RealBall
@@ -41,6 +44,7 @@ local Saved = {
 	LastPrediction = 0;
 	LastTracer = nil;
 	CurrentMethod = "Universal";
+	inClash = false;
 };
 
 local function AttemptParry()
@@ -51,6 +55,12 @@ local function setup(Character)
 	Character:WaitForChild("HumanoidRootPart")
 	if ballRangeDisplay then ballRangeDisplay:Destroy() end
 	ballRangeDisplay = Instance.new("Part")
+	
+	local didDie = false
+	
+	Character:WaitForChild("Humanoid").Died:Connect(function()
+		didDie = true
+	end)
 	
 	ballRangeDisplay.Material = Enum.Material.ForceField
 	ballRangeDisplay.Transparency = 0.825
@@ -79,7 +89,7 @@ local function setup(Character)
 		end
 	end)
 	RunService.RenderStepped:Connect(function()
-		if Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Head") then
+		if Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Head") and not didDie then
 			local Ball = FindBall()
 			local OtherBall = FindOtherBall()
 			
@@ -87,8 +97,8 @@ local function setup(Character)
 				if not Ball:FindFirstChild("PredictionValue") then
 					tag = Instance.new("BillboardGui")
 					tag.Parent = Ball
-					tag.Size = UDim2.new(15,0,3,0)
-					tag.ExtentsOffset = Vector3.new(0,2.25,0)
+					tag.Size = UDim2.new(5,0,3,0)
+					tag.ExtentsOffset = Vector3.new(0,3,0)
 					label = Instance.new("TextLabel")
 					label.Parent = tag
 					label.Size = UDim2.new(1,0,1,0)
@@ -98,6 +108,22 @@ local function setup(Character)
 					label.TextColor3 = Color3.fromRGB(255, 255, 255)
 					label.Text = "0"
 					tag.Name = "PredictionValue"
+					
+					if not Character.Head:FindFirstChild("LogicUI") then
+						logic_tag = Instance.new("BillboardGui")
+						logic_tag.Parent = Character.Head
+						logic_tag.Size = UDim2.new(15,0,3,0)
+						logic_tag.ExtentsOffset = Vector3.new(0,2.25,0)
+						new_label = Instance.new("TextLabel")
+						new_label.Parent = logic_tag
+						new_label.Size = UDim2.new(1,0,1,0)
+						new_label.BackgroundTransparency = 1
+						new_label.TextScaled = true
+						new_label.TextStrokeTransparency = 0
+						new_label.TextColor3 = Color3.fromRGB(255, 255, 255)
+						new_label.Text = "0"
+						logic_tag.Name = "LogicUI"
+					end
 					
 					Saved.LastBallPosition = Ball.Position
 					
@@ -111,7 +137,14 @@ local function setup(Character)
 					Tracer.Thickness = 1
 					Tracer.Transparency = 1
 					
+					if Saved.LastTracer then
+						Saved.LastTracer.Color = Color3.new(1, 1, 1)
+					end
+					
 					Saved.LastTracer = Tracer
+					
+					Saved.inClash = false
+					closeClashes = 0
 					
 					function line()
 						game:GetService("RunService").RenderStepped:Connect(function()
@@ -131,19 +164,30 @@ local function setup(Character)
 				end
 				
 				local TCL = (#game:GetService("Workspace"):GetDescendants() / 1000) / 2.5
-				local Delta = (os.clock() - Saved.LastTick) * 22.25
+				local Delta = (os.clock() - Saved.LastTick) * 22.5
 				if Delta > 1 then Delta = 1 end
+				
+				local Logic = math.abs(Ball.Position.Y - Saved.LastBallPosition.Y^1.5) / 100
+				if Logic > 0.8725 then Logic = 0.8725 end
+				
+				if Character.Head:FindFirstChild("LogicUI") then
+					Character.Head.LogicUI.TextLabel.Text = tostring(Logic)
+				end
 			
 				local xVelocity = Ball.Velocity.X / Delta
 				local yVelocity = Ball.Velocity.Y / Delta
 				local zVelocity = Ball.Velocity.Z / Delta
 				local totalVelocity = math.abs(math.sqrt(xVelocity^2 + yVelocity^2 + zVelocity^2)) / 10
-				if totalVelocity < 11.25 then totalVelocity = totalVelocity + (10 - totalVelocity) end
+				if totalVelocity < 11.5 then totalVelocity = 11.25 end
 				
 				newSize(totalVelocity)
 				TBallRangeDisplay.CFrame = Character:FindFirstChild("HumanoidRootPart").CFrame
 				
-				local PlayerPosition = LocalPlayer.Character.Head.Position
+				local PlayerPosition = Vector3.new(0, 0, 0)
+				if LocalPlayer.Character:FindFirstChild("Head") then
+					PlayerPosition = LocalPlayer.Character:FindFirstChild("Head").Position
+				end
+				
 				local Distance
 				if not OtherBall then
 					Distance = (Ball.Position - PlayerPosition).Magnitude
@@ -161,38 +205,54 @@ local function setup(Character)
 					end
 				end
 				
-				if Ball:GetAttribute("target") == LocalPlayer.Name or Character:FindFirstChild("Highlight") then	
-	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 925
-	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.825			
-	       			local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
-	       			Prediction = ((Prediction * 1.325) + (TCL / 1.425)) / 1.117625
-	       			Prediction = .975 * Prediction
-				Prediction *= 1.25
+				if Character:FindFirstChild("Highlight") then	
+	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 950
+	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.0825
+	       			local Prediction = ((totalVelocity + 15) + (PingAccountability * 20)) + IRL
+	       			Prediction = ((Prediction * 1.325) + (TCL / 1.5)) / 1.117625
+	       			Prediction -= Logic * 1.125
 	       			
 	       			newSize(Prediction)
-	       				
+	       			
 	       			Ball.PredictionValue.TextLabel.Text = "%"..tostring(Prediction)
 	       			
-	       			Saved.LastTracer.Color = Color3.new(0.7, 0, 0)
+	       			Saved.LastTracer.Color = Color3.new(0.75, 0, 0)
 	       				
 	       			if Distance <= Prediction * 2 then if Distance <= Prediction * 1.125 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
-	       			if Distance <= (Prediction / 1.025) then
-	       				if canParry then
+	       			if Distance <= Prediction  / 1.075 or Saved.inClash then
+	       				if canParry or Saved.inClash then
 	       					Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
-	       					
-	       					if Saved.CurrentMethod == "Focused" then
-	       						AttemptParry()
-	       					elseif Saved.CurrentMethod == "Universal" then
-	       						AttemptParry()
-	       					end
-	       					canParry = false
-	       				else
-	       					if Distance <= 25 then
-	       						if Distance <= 16.75 then
-	       							canParry = true
-	       							print("can now parry, distance: "..tostring(Distance))
+	       						
+	       					if Distance < 20 then
+	       						closeClashes += 1
+	       								
+	       						if closeClashes >= 3 then
+	       							if not Saved.inClash then
+	       								Saved.inClash = true
+	       									
+	       								print("now in clash")
+	       							end
+	       						end
+	       					else
+	       						closeClashes = 0
+	       						
+	       						if Saved.inClash then
+	       							Saved.inClash = false
+	       							
+	       							print("clash over")
 	       						end
 	       					end
+	       						
+	       					AttemptParry()
+	       					wasAttempted = false
+		       				canParry = false
+		       			else
+		       				if Distance <= 25 then
+		       					if Distance < 6.75 then
+		       						canParry = true
+		       						wasAttempted = true
+		       					end
+							end
 	       				end
 	       			end
 	       			
@@ -217,9 +277,9 @@ local function setup(Character)
 		end
 	end)
 end
+
 LocalPlayer.CharacterAdded:Connect(function(Character)
 	setup(Character)
 end)
 setup(LocalPlayer.Character)
-
 getgenv().executed = true
