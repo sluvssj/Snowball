@@ -75,7 +75,7 @@ local function setup(Character)
 				local TCL = (#game:GetService("Workspace"):GetDescendants() / 1000) / 2.5
 			
 				local totalVelocity = math.abs(Ball.Velocity.X + Ball.Velocity.Y + Ball.Velocity.Z) / 4.5
-				if totalVelocity < 10 then totalVelocity = 10 end
+				if totalVelocity < 11.5 then totalVelocity = 11.5 end
 				ballRangeDisplay.Size = Vector3.new(totalVelocity, totalVelocity, totalVelocity)
 				TBallRangeDisplay.CFrame = Character:FindFirstChild("HumanoidRootPart").CFrame
 				
@@ -100,7 +100,7 @@ local function setup(Character)
 	       						ReplicatedStorage.Remotes.ParryButtonPress:Fire()
 	       						canParry = false
 	       					else
-	       						if Distance <= 15 then
+	       						if Distance <= 10 then
 	       							ReplicatedStorage.Remotes.ParryButtonPress:Fire()
 	       						end
 	       					end
