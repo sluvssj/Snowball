@@ -38,6 +38,7 @@ local function setup(Character)
 	ballRangeDisplay.Shape = Enum.PartType.Ball
 	
 	ballRangeDisplay.Parent = game:GetService("Workspace")
+	local TBallRangeDisplay = ballRangeDisplay
 	
 	local ballIncomingSound = Instance.new("Sound")
 	ballIncomingSound.SoundId = "rbxassetid://9113880610"
@@ -75,8 +76,7 @@ local function setup(Character)
 			
 				local totalVelocity = math.abs(Ball.Velocity.X + Ball.Velocity.Y + Ball.Velocity.Z) / 4.5
 				ballRangeDisplay.Size = Vector3.new(totalVelocity, totalVelocity, totalVelocity)
-				
-				ballRangeDisplay.CFrame = Character:FindFirstChild("HumanoidRootPart").CFrame
+				TBallRangeDisplay.CFrame = Character:FindFirstChild("HumanoidRootPart").CFrame
 				
 				if Character:FindFirstChild("Highlight") then
 					local PlayerPosition = LocalPlayer.Character.Head.Position
