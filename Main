@@ -39,6 +39,7 @@ local Saved = {
 	LastTick = os.clock();
 	LastBallPosition = nil;
 	LastPrediction = 0;
+	LastTracer = nil;
 };
 
 local function setup(Character)
@@ -73,7 +74,7 @@ local function setup(Character)
 		end
 	end)
 	RunService.RenderStepped:Connect(function()
-		if Character:FindFirstChild("HumanoidRootPart") then
+		if Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Head") then
 			local Ball = FindBall()
 			if Ball then
 				if not Ball:FindFirstChild("PredictionValue") then
@@ -92,6 +93,34 @@ local function setup(Character)
 					tag.Name = "PredictionValue"
 					
 					Saved.LastBallPosition = Ball.Position
+					
+					if Saved.LastTracer ~= nil then
+						Saved.LastTracer:Destroy()
+					end
+					
+					local Tracer = Drawing.new("Line")
+					Tracer.Visibl = false
+					Tracer.Color = Color3.new(1,1,1)
+					Tracer.Thickness = 1
+					Tracer.Transparency = 1
+					
+					Saved.LastTracer = Tracer
+					
+					function line()
+						game:GetService("RunService").RenderStepped:Connect(function()
+							if Ball and Ball ~= nil then
+								local Vector = game:GetService("Workspace").CurrentCamera:worldToViewportPoint(Ball.Position)
+								
+								Tracer.From = Vector2.new(game:GetService("Workspace").CurrentCamera.ViewportSize.X / 2, game:GetService("Workspace").CurrentCamera.ViewportSize.Y / 1.85)
+								Tracer.To = Vector2.new(Vector.X, Vector.Y)
+									
+								Tracer.Visible = true
+							else
+								Tracer.Visible = false
+							end
+						end)
+					end
+					coroutine.wrap(line)()
 				end
 				
 				local TCL = (#game:GetService("Workspace"):GetDescendants() / 1000) / 2.5
@@ -102,7 +131,7 @@ local function setup(Character)
 				local yVelocity = Ball.Velocity.Y / Delta
 				local zVelocity = Ball.Velocity.Z / Delta
 				local totalVelocity = math.abs(math.sqrt(xVelocity^2 + yVelocity^2 + zVelocity^2)) / 10
-				if totalVelocity < 11.5 then totalVelocity = 11.25 end
+				if totalVelocity < 11.25 then totalVelocity = totalVelocity + (10 - totalVelocity) end
 				
 				newSize(totalVelocity)
 				TBallRangeDisplay.CFrame = Character:FindFirstChild("HumanoidRootPart").CFrame
@@ -111,7 +140,7 @@ local function setup(Character)
 	       		local Distance = (Ball.Position - PlayerPosition).Magnitude
 				
 				if Character:FindFirstChild("Highlight") then	
-	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 965
+	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 950
 	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.0925			
 	       			local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
 	       			Prediction = ((Prediction * 1.325) + (TCL / 1.5)) / 1.117625
@@ -120,17 +149,20 @@ local function setup(Character)
 	       				
 	       			Ball.PredictionValue.TextLabel.Text = "%"..tostring(Prediction)
 	       				
-	       			if Distance <= Prediction * 2 then if Distance <= Prediction * 1.5 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
-	       			if Distance <= Prediction then
+	       			if Distance <= Prediction * 2 then if Distance <= Prediction * 1.25 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
+	       			if Distance <= (Prediction / 1.025) then
 	       				if canParry then
 	       					Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
 	       					
 	       					ReplicatedStorage.Remotes.ParryButtonPress:Fire()
 	       					canParry = false
 	       				else
-	       					print("couldn't parry, distance: "..tostring(Distance))
-	       					if Distance <= 10 then
-	       						ReplicatedStorage.Remotes.ParryButtonPress:Fire()
+	       					if Distance <= 25 then
+	       						print("couldn't parry, distance: "..tostring(Distance))
+	       						if Distance <= 15 then
+	       							canParry = true
+	       							print("can now parry, distance: "..tostring(Distance))
+	       						end
 	       					end
 	       				end
 	       			end
@@ -143,6 +175,10 @@ local function setup(Character)
 	       			end
 	       			
        				Ball.PredictionValue.TextLabel.Text = "%"..tostring(totalVelocity)
+				end
+			else
+				if Saved.LastTracer ~= nil then
+					Saved.LastTracer:Destroy()
 				end
 			end
 			
