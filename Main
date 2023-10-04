@@ -131,7 +131,7 @@ local function setup(Character)
 				end
 				
 				local TCL = (#game:GetService("Workspace"):GetDescendants() / 1000) / 2.5
-				local Delta = (os.clock() - Saved.LastTick) * 20
+				local Delta = (os.clock() - Saved.LastTick) * 22.25
 				if Delta > 1 then Delta = 1 end
 			
 				local xVelocity = Ball.Velocity.X / Delta
@@ -166,7 +166,7 @@ local function setup(Character)
 	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.825			
 	       			local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
 	       			Prediction = ((Prediction * 1.325) + (TCL / 1.425)) / 1.117625
-	       			Prediction = .95 * Prediction
+	       			Prediction = .975 * Prediction
 	       			
 	       			newSize(Prediction)
 	       				
