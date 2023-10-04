@@ -166,7 +166,7 @@ local function setup(Character)
 	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.825			
 	       			local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
 	       			Prediction = ((Prediction * 1.325) + (TCL / 1.425)) / 1.117625
-	       			Prediction = .975 * Prediction
+	       			Prediction = .95 * Prediction
 	       			
 	       			newSize(Prediction)
 	       				
