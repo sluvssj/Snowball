@@ -167,6 +167,7 @@ local function setup(Character)
 	       			local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
 	       			Prediction = ((Prediction * 1.325) + (TCL / 1.425)) / 1.117625
 	       			Prediction = .975 * Prediction
+				Prediction *= 1.25
 	       			
 	       			newSize(Prediction)
 	       				
