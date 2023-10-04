@@ -93,7 +93,7 @@ local function setup(Character)
 	       				
 	       				if Distance <= Prediction * 2 then if Distance <= Prediction * 1.5 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
 	       				
-	       				if Distance <= Prediction then
+	       				if Distance / BallVelocity <= Prediction then
 	       					if canParry then
 	       						Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
 	       					
