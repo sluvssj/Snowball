@@ -75,37 +75,38 @@ local function setup(Character)
 				local TCL = (#game:GetService("Workspace"):GetDescendants() / 1000) / 2.5
 			
 				local totalVelocity = math.abs(Ball.Velocity.X + Ball.Velocity.Y + Ball.Velocity.Z) / 4.5
+				if totalVelocity < 10 then totalVelocity = 10 end
 				ballRangeDisplay.Size = Vector3.new(totalVelocity, totalVelocity, totalVelocity)
 				TBallRangeDisplay.CFrame = Character:FindFirstChild("HumanoidRootPart").CFrame
 				
 				if Character:FindFirstChild("Highlight") then
 					local PlayerPosition = LocalPlayer.Character.Head.Position
-       				local Distance = (Ball.Position - PlayerPosition).Magnitude
-       				
-       				local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
-       				local IRL = (settings().Network.IncomingReplicationLag) + 0.075
-       				
-       				local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
-       				Prediction = ((Prediction * 1.325) + (TCL / 1.5)) / 1.125
-       				
-       				Ball.PredictionValue.TextLabel.Text = "%"..tostring(Prediction)
-       				
-       				if Distance <= Prediction * 2 then if Distance <= Prediction * 1.5 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
-       				
-       				if Distance <= Prediction then
-       					if canParry then
-       						Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
-       					
-       						ReplicatedStorage.Remotes.ParryButtonPress:Fire()
-       						canParry = false
-       					else
-       						if Distance <= 15 then
-       							ReplicatedStorage.Remotes.ParryButtonPress:Fire()
-       						end
-       					end
-       				end
-       			else
-       				Ball.PredictionValue.TextLabel.Text = "%"..tostring(totalVelocity)
+	       				local Distance = (Ball.Position - PlayerPosition).Magnitude
+	       				
+	       				local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+	       				local IRL = (settings().Network.IncomingReplicationLag) + 0.075
+	       				
+	       				local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
+	       				Prediction = ((Prediction * 1.325) + (TCL / 1.5)) / 1.125
+	       				
+	       				Ball.PredictionValue.TextLabel.Text = "%"..tostring(Prediction)
+	       				
+	       				if Distance <= Prediction * 2 then if Distance <= Prediction * 1.5 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
+	       				
+	       				if Distance <= Prediction then
+	       					if canParry then
+	       						Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
+	       					
+	       						ReplicatedStorage.Remotes.ParryButtonPress:Fire()
+	       						canParry = false
+	       					else
+	       						if Distance <= 15 then
+	       							ReplicatedStorage.Remotes.ParryButtonPress:Fire()
+	       						end
+	       					end
+	       				end
+	       			else
+       					Ball.PredictionValue.TextLabel.Text = "%"..tostring(totalVelocity)
 				end
 			end
 		end
