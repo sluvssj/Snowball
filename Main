@@ -40,7 +40,12 @@ local Saved = {
 	LastBallPosition = nil;
 	LastPrediction = 0;
 	LastTracer = nil;
+	CurrentMethod = "Universal";
 };
+
+local function AttemptParry()
+	ReplicatedStorage.Remotes.ParryButtonPress:Fire()
+end
 
 local function setup(Character)
 	Character:WaitForChild("HumanoidRootPart")
@@ -76,6 +81,8 @@ local function setup(Character)
 	RunService.RenderStepped:Connect(function()
 		if Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Head") then
 			local Ball = FindBall()
+			local OtherBall = FindOtherBall()
+			
 			if Ball then
 				if not Ball:FindFirstChild("PredictionValue") then
 					tag = Instance.new("BillboardGui")
@@ -99,8 +106,8 @@ local function setup(Character)
 					end
 					
 					local Tracer = Drawing.new("Line")
-					Tracer.Visibl = false
-					Tracer.Color = Color3.new(1,1,1)
+					Tracer.Visible = false
+					Tracer.Color = Color3.new(1, 1, 1)
 					Tracer.Thickness = 1
 					Tracer.Transparency = 1
 					
@@ -124,7 +131,7 @@ local function setup(Character)
 				end
 				
 				local TCL = (#game:GetService("Workspace"):GetDescendants() / 1000) / 2.5
-				local Delta = (os.clock() - Saved.LastTick) * 22.5
+				local Delta = (os.clock() - Saved.LastTick) * 20
 				if Delta > 1 then Delta = 1 end
 			
 				local xVelocity = Ball.Velocity.X / Delta
@@ -137,29 +144,50 @@ local function setup(Character)
 				TBallRangeDisplay.CFrame = Character:FindFirstChild("HumanoidRootPart").CFrame
 				
 				local PlayerPosition = LocalPlayer.Character.Head.Position
-	       		local Distance = (Ball.Position - PlayerPosition).Magnitude
+				local Distance
+				if not OtherBall then
+					Distance = (Ball.Position - PlayerPosition).Magnitude
+					
+					if Saved.CurrentMethod ~= "Focused" then
+						Saved.CurrentMethod = "Focused"
+						print("method - focused")
+					end
+				else
+					Distance = (PlayerPosition - OtherBall.Position).Magnitude
+					
+					if Saved.CurrentMethod ~= "Universal" then
+						Saved.CurrentMethod = "Universal"
+						print("method - universal")
+					end
+				end
 				
-				if Character:FindFirstChild("Highlight") then	
-	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 950
-	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.0925			
+				if Ball:GetAttribute("target") == LocalPlayer.Name or Character:FindFirstChild("Highlight") then	
+	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 925
+	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.825			
 	       			local Prediction = ((totalVelocity + 10) + (PingAccountability * 20)) + IRL
-	       			Prediction = ((Prediction * 1.325) + (TCL / 1.5)) / 1.117625
+	       			Prediction = ((Prediction * 1.325) + (TCL / 1.425)) / 1.117625
+	       			Prediction = .975 * Prediction
 	       			
 	       			newSize(Prediction)
 	       				
 	       			Ball.PredictionValue.TextLabel.Text = "%"..tostring(Prediction)
+	       			
+	       			Saved.LastTracer.Color = Color3.new(0.7, 0, 0)
 	       				
-	       			if Distance <= Prediction * 2 then if Distance <= Prediction * 1.25 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
+	       			if Distance <= Prediction * 2 then if Distance <= Prediction * 1.125 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
 	       			if Distance <= (Prediction / 1.025) then
 	       				if canParry then
 	       					Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
 	       					
-	       					ReplicatedStorage.Remotes.ParryButtonPress:Fire()
+	       					if Saved.CurrentMethod == "Focused" then
+	       						AttemptParry()
+	       					elseif Saved.CurrentMethod == "Universal" then
+	       						AttemptParry()
+	       					end
 	       					canParry = false
 	       				else
 	       					if Distance <= 25 then
-	       						print("couldn't parry, distance: "..tostring(Distance))
-	       						if Distance <= 15 then
+	       						if Distance <= 16.75 then
 	       							canParry = true
 	       							print("can now parry, distance: "..tostring(Distance))
 	       						end
@@ -173,6 +201,8 @@ local function setup(Character)
 	       			if Distance <= Saved.LastPrediction * 1.5 then
 	       				Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	       			end
+	       			
+	       			Saved.LastTracer.Color = Color3.new(1, 1, 1)
 	       			
        				Ball.PredictionValue.TextLabel.Text = "%"..tostring(totalVelocity)
 				end
