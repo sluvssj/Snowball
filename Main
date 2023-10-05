@@ -1,6 +1,9 @@
 -- Snowball Auto Parry [@dtbsnt]
 
+getgenv().AIAbilities = true
+
 if getgenv().executed then return end
+settings().Physics.AllowSleep = false
 
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,10 +15,20 @@ local Balls = game:GetService("Workspace").Balls
 local ballRangeDisplay = nil
 local ballRange = 0
 
+local PlayerGui = localPlayer:WaitForChild("PlayerGui")
+local Hotbar = PlayerGui:WaitForChild("Hotbar")
+
+local uigrad1 = Hotbar.Block.border1.UIGradient
+local uigrad2 = Hotbar.Ability.border2.UIGradient
+
 local closeClashes = 0
 
 local canParry = true
 local wasAttempted = false
+
+local function isCooldownInEffect(uigradient)
+    return uigradient.Offset.Y < 0.5
+end
 
 local function notify(txt)
 	game:GetService("StarterGui"):SetCore("SendNotification",{
@@ -52,6 +65,7 @@ local Saved = {
 	LastBallPosition = nil;
 	LastPrediction = 0;
 	LastTracer = nil;
+	LastHitDistance = 0;
 	CurrentMethod = "Universal";
 	inClash = false;
 };
@@ -84,13 +98,6 @@ local function setup(Character)
 	local function newSize(s)
 		game:GetService("TweenService"):Create(TBallRangeDisplay, TweenInfo.new(0.75), {Size = Vector3.new(s, s, s)}):Play()
 	end
-	
-	local ballIncomingSound = Instance.new("Sound")
-	ballIncomingSound.SoundId = "rbxassetid://9113880610"
-	ballIncomingSound.Parent = Character.HumanoidRootPart
-	ballIncomingSound.Volume = 1.5
-	
-	ballIncomingSound:Play()
 	
 	Character.ChildRemoved:Connect(function(obj)
 		if obj.Name == "Highlight" then
@@ -153,6 +160,7 @@ local function setup(Character)
 					Saved.LastTracer = Tracer
 					
 					Saved.inClash = false
+					Saved.LastHitDistance = 0
 					closeClashes = 0
 					
 					function line()
@@ -200,38 +208,44 @@ local function setup(Character)
 				
 				local Distance
 				if not OtherBall then
-					Distance = (Ball.Position - PlayerPosition).Magnitude
+					Distance = ((Ball.Position + Ball.Velocity) - PlayerPosition).Magnitude
 					
 					if Saved.CurrentMethod ~= "Focused" then
 						Saved.CurrentMethod = "Focused"
 						notify("New Method - Focused")
 					end
 				else
-					Distance = (PlayerPosition - OtherBall.Position).Magnitude
+					Distance = (PlayerPosition - (OtherBall.Position + OtherBall.Velocity)).Magnitude
 					
 					if Saved.CurrentMethod ~= "Universal" then
 						Saved.CurrentMethod = "Universal"
 						notify("New Method - Universal")
 					end
 				end
+				if Saved.LastHitDistance == 0 then Saved.LastHitDistance = Distance end
+				
+				local MovingLogic = Character.Humanoid.MoveDirection
+				MovingLogic = (MovingLogic.X + MovingLogic.Y + MovingLogic.Z) / 1.75 
 				
 				if Character:FindFirstChild("Highlight") then	
 	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 950
 	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.0825
 	       			local Prediction = ((totalVelocity + 15) + (PingAccountability * 20)) + IRL
 	       			Prediction = ((Prediction * 1.325) + (TCL / 1.5)) / 1.117625
-	       			Prediction -= Logic * 1.125
+	       			Prediction -= Logic * 1.15
 	       			
 	       			newSize(Prediction)
 	       			
 	       			Ball.PredictionValue.TextLabel.Text = "%"..tostring(Prediction)
 	       			
 	       			Saved.LastTracer.Color = Color3.new(0.75, 0, 0)
+	       			
+	       			local exceeding = math.abs(Distance - Saved.LastHitDistance) > 52.5
 	       				
-	       			if Distance <= Prediction * 2 then if Distance <= Prediction * 1.125 then if not ballIncomingSound.IsPlaying then ballIncomingSound:Play() end end if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
-	       			if Distance <= Prediction  / 1.075 or Saved.inClash then
+	       			if Distance <= Prediction * 2 then if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
+	       			if Distance <= ((Prediction  / 1.0825) - MovingLogic) + 0.15 or Saved.inClash then
 	       				if realVelocity > 1.1725 then
-	       					if canParry or Saved.inClash then
+	       					if canParry and not exceeding or Saved.inClash then
 		       					Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
 		       						
 		       					if Distance < 30 then
@@ -254,10 +268,22 @@ local function setup(Character)
 		       							notify("Clash Ended")
 		       						end
 		       					end
-		       						
-		       					AttemptParry()
-		       					wasAttempted = false
-			       				canParry = false
+		       					
+		       					Saved.LastHitDistance = Distance
+		       					
+		       					if not isCooldownInEffect(uigrad1) or Saved.inClash then
+		       						AttemptParry()
+		       						wasAttempted = false
+			       					canParry = false
+			       				else
+			       					if not isCooldownInEffect(uigrad2) then
+			       						if getgenv().AIAbilities then
+			       							 if Character.Abilities["Raging Deflection"].Enabled or Character.Abilities["Rapture"].Enabled or Character.Abilities["Telekinesis"].Enabled or Character.Abilities["Platform"].Enabled or Character.Abilities["Invisibility"].Enabled or Character.Abilities["Forcefield"].Enabled then
+			       							 	abilityButtonPress:Fire()
+			       							 end
+			       						end
+            						end
+		       					end
 			       			else
 			       				if Distance <= 25 then
 			       					if Distance < 15 then
@@ -299,7 +325,7 @@ local function setup(Character)
 	end)
 end
 
-getgenv().version = "1.0.1"
+getgenv().version = "0.0.1"
 LocalPlayer.CharacterAdded:Connect(function(Character)
 	setup(Character)
 end)
