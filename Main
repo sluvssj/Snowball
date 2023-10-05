@@ -15,7 +15,7 @@ local Balls = game:GetService("Workspace").Balls
 local ballRangeDisplay = nil
 local ballRange = 0
 
-local PlayerGui = localPlayer:WaitForChild("PlayerGui")
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Hotbar = PlayerGui:WaitForChild("Hotbar")
 
 local uigrad1 = Hotbar.Block.border1.UIGradient
@@ -70,6 +70,7 @@ local Saved = {
 	inClash = false;
 };
 
+local abilityButtonPress = ReplicatedStorage.Remotes.AbilityButtonPress
 local function AttemptParry()
 	ReplicatedStorage.Remotes.ParryButtonPress:Fire()
 end
@@ -139,6 +140,7 @@ local function setup(Character)
 						new_label.TextColor3 = Color3.fromRGB(255, 255, 255)
 						new_label.Text = "0"
 						logic_tag.Name = "LogicUI"
+						logic_tag.Enabled = false
 					end
 					
 					Saved.LastBallPosition = Ball.Position
@@ -207,19 +209,14 @@ local function setup(Character)
 				end
 				
 				local Distance
-				if not OtherBall then
+				if Ball then
 					Distance = ((Ball.Position + Ball.Velocity) - PlayerPosition).Magnitude
+					NormalDistance = (Ball.Position - PlayerPosition).Magnitude
+					Distance = NormalDistance + (Distance / 200)
 					
 					if Saved.CurrentMethod ~= "Focused" then
 						Saved.CurrentMethod = "Focused"
 						notify("New Method - Focused")
-					end
-				else
-					Distance = (PlayerPosition - (OtherBall.Position + OtherBall.Velocity)).Magnitude
-					
-					if Saved.CurrentMethod ~= "Universal" then
-						Saved.CurrentMethod = "Universal"
-						notify("New Method - Universal")
 					end
 				end
 				if Saved.LastHitDistance == 0 then Saved.LastHitDistance = Distance end
@@ -227,7 +224,7 @@ local function setup(Character)
 				local MovingLogic = Character.Humanoid.MoveDirection
 				MovingLogic = (MovingLogic.X + MovingLogic.Y + MovingLogic.Z) / 1.75 
 				
-				if Character:FindFirstChild("Highlight") then	
+				if Character:FindFirstChild("Highlight") or Ball.BrickColor == BrickColor.new("Really red") then	
 	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 950
 	       			local IRL = (settings().Network.IncomingReplicationLag) + 0.0825
 	       			local Prediction = ((totalVelocity + 15) + (PingAccountability * 20)) + IRL
@@ -239,50 +236,63 @@ local function setup(Character)
 	       			Ball.PredictionValue.TextLabel.Text = "%"..tostring(Prediction)
 	       			
 	       			Saved.LastTracer.Color = Color3.new(0.75, 0, 0)
-	       			
-	       			local exceeding = math.abs(Distance - Saved.LastHitDistance) > 52.5
 	       				
 	       			if Distance <= Prediction * 2 then if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
 	       			if Distance <= ((Prediction  / 1.0825) - MovingLogic) + 0.15 or Saved.inClash then
 	       				if realVelocity > 1.1725 then
-	       					if canParry and not exceeding or Saved.inClash then
+	       					if canParry or Saved.inClash then
 		       					Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
 		       						
-		       					if Distance < 30 then
-		       						closeClashes += 1
-		       						
-		       						if closeClashes >= 5 then
-		       							if not Saved.inClash then
-		       								Saved.inClash = true
-		       								
-		       								notify("Entered Clash")
-		       							end
-		       						end
-		       					else
-		       						closeClashes = 0
-		       						
-		       						if Saved.inClash then
-		       							Saved.inClash = false
-		       							canParry = true
-		       							
-		       							notify("Clash Ended")
-		       						end
-		       					end
-		       					
-		       					Saved.LastHitDistance = Distance
+		       					local didAttempt = false
 		       					
 		       					if not isCooldownInEffect(uigrad1) or Saved.inClash then
 		       						AttemptParry()
 		       						wasAttempted = false
 			       					canParry = false
+			       					didAttempt = true
+			       					
+			       					Saved.LastHitDistance = Distance
 			       				else
 			       					if not isCooldownInEffect(uigrad2) then
-			       						if getgenv().AIAbilities then
-			       							 if Character.Abilities["Raging Deflection"].Enabled or Character.Abilities["Rapture"].Enabled or Character.Abilities["Telekinesis"].Enabled or Character.Abilities["Platform"].Enabled or Character.Abilities["Invisibility"].Enabled or Character.Abilities["Forcefield"].Enabled then
-			       							 	abilityButtonPress:Fire()
+			       						if getgenv().AIAbilities and Ball.BrickColor == BrickColor.new("Really red") then
+			       							 if Character.Abilities["Raging Deflection"].Enabled or Character.Abilities["Rapture"].Enabled or Character.Abilities["Telekinesis"].Enabled or Character.Abilities["Platform"].Enabled or Character.Abilities["Invisibility"].Enabled or Character.Abilities["Forcefield"].Enabled or Character.Abilities["Freeze"].Enabled or Character.Abilities["Super Jump"].Enabled then
+			       							 	if Character.Abilities["Invisibility"].Enabled then
+			       							 		if #game.Workspace.Alive:GetChildren() > 2 then
+			       							 			abilityButtonPress:Fire()
+			       							 			
+			       							 			Saved.LastHitDistance = Distance
+			       							 		end
+			       							 	else
+			       							 		abilityButtonPress:Fire()
+			       							 		
+			       							 		Saved.LastHitDistance = Distance
+			       							 	end
 			       							 end
 			       						end
             						end
+		       					end
+		       					
+		       					if didAttempt then
+		       						if Distance < 30 then
+			       						closeClashes += 1
+			       						
+			       						if closeClashes > 3 then
+			       							if not Saved.inClash then
+			       								Saved.inClash = true
+			       								
+			       								notify("Entered Clash")
+			       							end
+			       						end
+			       					else
+			       						closeClashes = 0
+			       						
+			       						if Saved.inClash then
+			       							Saved.inClash = false
+			       							canParry = true
+			       							
+			       							notify("Clash Ended")
+			       						end
+			       					end
 		       					end
 			       			else
 			       				if Distance <= 25 then
