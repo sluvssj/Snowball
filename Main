@@ -27,7 +27,7 @@ local canParry = true
 local wasAttempted = false
 
 local function isCooldownInEffect(uigradient)
-    return uigradient.Offset.Y < 0.5
+    return uigradient.Offset.Y < 0.495
 end
 
 local function notify(txt)
@@ -59,13 +59,25 @@ function FindOtherBall()
     end
     return OtherBall
 end
+local function findBallsTarget()
+	local Ball = FindBall()
+	
+	for i,v in pairs(game.Workspace.Alive:GetChildren()) do
+		if Ball:GetAttribute("target") == v.Name and v:FindFirstChild("Highlight") then
+			return v
+		end
+	end
+end
 
 local Saved = {
 	LastTick = os.clock();
 	LastBallPosition = nil;
 	LastPrediction = 0;
 	LastTracer = nil;
+	LastTarget = nil;
+	InClashWith = nil;
 	LastHitDistance = 0;
+	UsedAbility = false;
 	CurrentMethod = "Universal";
 	inClash = false;
 };
@@ -82,8 +94,25 @@ local function setup(Character)
 	
 	local didDie = false
 	
+	local Connection
+	
+	local function endClash()
+		Saved.inClash = false
+		canParry = true
+			       							
+		Saved.InClashWith = nil
+			       							
+		notify("Clash Ended")
+	end
+	
 	Character:WaitForChild("Humanoid").Died:Connect(function()
 		didDie = true
+		
+		Connection:Disconnect()
+		
+		if Saved.inClash then
+			endClash()
+		end
 	end)
 	
 	ballRangeDisplay.Material = Enum.Material.ForceField
@@ -105,7 +134,7 @@ local function setup(Character)
 			canParry = true
 		end
 	end)
-	RunService.RenderStepped:Connect(function()
+	Connection = RunService.RenderStepped:Connect(function()
 		if Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Head") and not didDie then
 			local Ball = FindBall()
 			local OtherBall = FindOtherBall()
@@ -162,8 +191,10 @@ local function setup(Character)
 					Saved.LastTracer = Tracer
 					
 					Saved.inClash = false
+					Saved.UsedAbility = false
 					Saved.LastHitDistance = 0
 					closeClashes = 0
+					canParry = true
 					
 					function line()
 						game:GetService("RunService").RenderStepped:Connect(function()
@@ -222,7 +253,7 @@ local function setup(Character)
 				if Saved.LastHitDistance == 0 then Saved.LastHitDistance = Distance end
 				
 				local MovingLogic = Character.Humanoid.MoveDirection
-				MovingLogic = (MovingLogic.X + MovingLogic.Y + MovingLogic.Z) / 1.75 
+				MovingLogic = (MovingLogic.X + MovingLogic.Y + MovingLogic.Z) / 1.75
 				
 				if Character:FindFirstChild("Highlight") or Ball.BrickColor == BrickColor.new("Really red") then	
 	       			local PingAccountability = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 950
@@ -238,7 +269,7 @@ local function setup(Character)
 	       			Saved.LastTracer.Color = Color3.new(0.75, 0, 0)
 	       				
 	       			if Distance <= Prediction * 2 then if canParry then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(235, 180, 45) end if Distance > Prediction * 1.25 then Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) end end
-	       			if Distance <= ((Prediction  / 1.0825) - MovingLogic) + 0.15 or Saved.inClash then
+	       			if Distance <= ((Prediction  / 1.0825) - MovingLogic) + 0.25 or Saved.inClash then
 	       				if realVelocity > 1.1725 then
 	       					if canParry or Saved.inClash then
 		       					Ball.PredictionValue.TextLabel.TextColor3 = Color3.fromRGB(145, 10, 10)
@@ -246,10 +277,42 @@ local function setup(Character)
 		       					local didAttempt = false
 		       					
 		       					if not isCooldownInEffect(uigrad1) or Saved.inClash then
-		       						AttemptParry()
-		       						wasAttempted = false
-			       					canParry = false
-			       					didAttempt = true
+									local abilityIsOnCooldown = isCooldownInEffect(uigrad2)
+
+									local function Parry()
+										if not Saved.UsedAbility then
+											AttemptParry()
+	
+											wasAttempted = false
+											canParry = false
+											didAttempt = true
+										end
+									end
+
+									if not Saved.inClash then
+										if getgenv().AIAbilities then
+											if not abilityIsOnCooldown then
+												if Character.Abilities["Raging Deflection"].Enabled or Character.Abilities["Rapture"].Enabled then
+													abilityButtonPress:Fire()
+													Saved.UsedAbility = true
+												else
+													if uigrad2.Offset.Y < .5 then
+														if uigrad2.Offset.Y < .425 then
+															Parry()
+														end
+													else
+														Parry()
+													end
+												end
+											else
+												Parry()
+											end
+										else
+											Parry()
+										end
+									else
+										Parry()
+									end
 			       					
 			       					Saved.LastHitDistance = Distance
 			       				else
@@ -259,11 +322,13 @@ local function setup(Character)
 			       							 	if Character.Abilities["Invisibility"].Enabled then
 			       							 		if #game.Workspace.Alive:GetChildren() > 2 then
 			       							 			abilityButtonPress:Fire()
+			       							 			Saved.UsedAbility = true
 			       							 			
 			       							 			Saved.LastHitDistance = Distance
 			       							 		end
 			       							 	else
 			       							 		abilityButtonPress:Fire()
+			       							 		Saved.UsedAbility = true
 			       							 		
 			       							 		Saved.LastHitDistance = Distance
 			       							 	end
@@ -274,21 +339,29 @@ local function setup(Character)
 		       					
 		       					if didAttempt then
 		       						if Distance < 30 then
-			       						closeClashes += 1
+		       							if not isCooldownInEffect(uigrad1) then
+		       								closeClashes += 1
 			       						
-			       						if closeClashes > 3 then
-			       							if not Saved.inClash then
-			       								Saved.inClash = true
-			       								
-			       								notify("Entered Clash")
-			       							end
-			       						end
+				       						if closeClashes >= 5 then
+				       							if not Saved.inClash then
+				       								Saved.inClash = true
+				       								
+				       								if Saved.LastTarget ~= nil then
+				       									Saved.InClashWith = Saved.LastTarget
+				       								end
+				       								
+				       								notify("Entered Clash with ", game.Players:GetPlayerFromCharacter(Saved.LastTarget).DisplayName or "N/A")
+				       							end
+				       						end
+		       							end
 			       					else
 			       						closeClashes = 0
 			       						
 			       						if Saved.inClash then
 			       							Saved.inClash = false
 			       							canParry = true
+			       							
+			       							Saved.InClashWith = nil
 			       							
 			       							notify("Clash Ended")
 			       						end
@@ -322,6 +395,23 @@ local function setup(Character)
 	       			
 	       			Saved.LastTracer.Color = Color3.new(1, 1, 1)
 	       			
+	       			if Saved.UsedAbility then
+	       				Saved.UsedAbility = false
+	       			end
+	       			local oldTarget = Saved.LastTarget
+	       			Saved.LastTarget = findBallsTarget()
+	       			if oldTarget ~= Saved.LastTarget then
+	       				if Saved.LastTarget then
+	       					print("new target -", Saved.LastTarget.Name)
+	       					
+	       					if Saved.inClash then
+	       						if Saved.LastTarget ~= Saved.InClashWith then
+	       							endClash()
+	       						end
+	       					end
+	       				end
+	       			end
+	       			
        				Ball.PredictionValue.TextLabel.Text = "%"..tostring(totalVelocity)
 				end
 			else
@@ -335,11 +425,10 @@ local function setup(Character)
 	end)
 end
 
-getgenv().version = "0.0.1"
+getgenv().version = "0.0.3"
 LocalPlayer.CharacterAdded:Connect(function(Character)
 	setup(Character)
 end)
 setup(LocalPlayer.Character)
-
 notify("Loaded, v"..getgenv().version.." | Mode - "..Saved.CurrentMethod)
 getgenv().executed = true
