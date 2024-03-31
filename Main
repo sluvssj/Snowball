@@ -56,7 +56,6 @@ end
 local metatable = getrawmetatable(game)
 local namecall  = metatable.__namecall
 
-make_readonly(metatable)
 hookfunction(game:GetService("Players").LocalPlayer.Kick, function(...)
    return wait(inf) -- Return an infinite wait, this is mostly because some devs prefer to crash the game after kicking
 end)
@@ -73,8 +72,8 @@ local ballRange = 0
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Hotbar = PlayerGui:WaitForChild("Hotbar")
 
-local uigrad1 = Hotbar.Block.border1.UIGradient
-local uigrad2 = Hotbar.Ability.border2.UIGradient
+local uigrad1 = Hotbar.Block.UIGradient
+local uigrad2 = Hotbar.Ability.UIGradient
 
 local closeClashes = 0
 
