@@ -3,6 +3,10 @@ settings().Physics.AllowSleep = false
 
 local LocalPlayer = game:GetService("Players").LocalPlayer
 
+local Whitelisted = {
+	5730390561
+}
+
 local function getHWID()
 	local http_request = (syn and syn.request) or http_request or request or httprequest or httpRequest or Request;
 
@@ -16,9 +20,22 @@ local function getHWID()
 	end
 	return hwid
 end
+
+local function notify(txt)
+	game:GetService("StarterGui"):SetCore("SendNotification",{
+       Title = "Snowball",
+       Icon = string.format("rbxthumb://type=Asset&id=%s&w=420&h=420", "14968422803"),
+       Text = txt,
+       Duration = 2
+    })
+end
+
 local currentHWID = getHWID()
 if currentHWID then
-	if game:GetService("MarketplaceService"):UserOwnsGamePassAsync(LocalPlayer.UserId, 266615666) then
+	if game:GetService("MarketplaceService"):UserOwnsGamePassAsync(LocalPlayer.UserId, 266615666) or table.find(Whitelisted, LocalPlayer.UserId) then
+		if table.find(Whitelisted, LocalPlayer.UserId) then
+			notify("You don't own this product but are whitelisted, enjoy!")
+		end
 		local webhookcheck = is_sirhurt_closure and "Sirhurt" or pebc_execute and "ProtoSmasher" or syn and "Synapse X" or secure_load and "Sentinel" or KRNL_LOADED and "Krnl" or SONA_LOADED and "Sona" or krnl and "Fluxus" or "N/A"
 	
 		local url =
@@ -82,15 +99,6 @@ local wasAttempted = false
 
 local function isCooldownInEffect(uigradient)
     return uigradient.Offset.Y < 0.499725
-end
-
-local function notify(txt)
-	game:GetService("StarterGui"):SetCore("SendNotification",{
-       Title = "Snowball",
-       Icon = string.format("rbxthumb://type=Asset&id=%s&w=420&h=420", "14968422803"),
-       Text = txt,
-       Duration = 2
-    })
 end
 
 function FindBall()
