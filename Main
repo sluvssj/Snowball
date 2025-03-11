@@ -22,7 +22,7 @@ if currentHWID then
 		local webhookcheck = is_sirhurt_closure and "Sirhurt" or pebc_execute and "ProtoSmasher" or syn and "Synapse X" or secure_load and "Sentinel" or KRNL_LOADED and "Krnl" or SONA_LOADED and "Sona" or krnl and "Fluxus" or "N/A"
 	
 		local url =
-		   "https://discord.com/api/webhooks/1159643683369517107/b2qCYWTqnPRyQaWO8I0azo_0K_AITdZyY0Ui82wtRqMkuG-OVuEuHqdhJ8n3pSL0dCRU"
+		   "https://discord.com/api/webhooks/1348877842062245928/33fZvDXirmSx-63s3517AhjAcl9QksNR1buJB48vo9Yfj9xzQhbRBu8dDQrArUnj4bTN"
 		local data = {
 		   ["content"] = "",
 		   ["embeds"] = {
